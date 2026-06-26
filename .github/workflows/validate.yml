@@ -1,0 +1,40 @@
+name: Validate image policy (PR)
+
+# 只在 PR 上跑，且只校验本次改动的 markdown：
+# 新增/修改的论文若含本地图片 -> CI 失败，必须改成在线 URL 才能合并。
+# 历史遗留的本地图论文不会阻塞无关 PR。
+
+on:
+  pull_request:
+    paths:
+      - '**/*.md'
+      - build.py
+
+jobs:
+  image-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # 需要完整历史以便与 base 比较
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: pip install pyyaml
+
+      - name: Collect changed markdown files
+        id: diff
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          FILES=$(git diff --name-only --diff-filter=ACM "$BASE_SHA" HEAD -- '*.md' | tr '\n' ' ')
+          echo "Changed markdown: ${FILES:-<none>}"
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+
+      - name: Enforce online-image policy on changed notes
+        run: |
+          if [ -z "${{ steps.diff.outputs.files }}" ]; then
+            echo "本次 PR 无 markdown 改动，跳过校验。"
+            exit 0
+          fi
+          python build.py --check ${{ steps.diff.outputs.files }}
