@@ -1,0 +1,12 @@
+# 构建产物（由 build.py 生成，CI 会重建，无需提交）
+site/papers.json
+
+# Python
+__pycache__/
+*.pyc
+
+# 本地服务器日志
+srv.log
+
+# macOS
+.DS_Store

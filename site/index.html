@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robotics Paper Survey</title>
+
+<!-- marked (markdown) + KaTeX (math) via CDN -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+<style>
+:root{
+  --bg:#fafafa; --panel:#fff; --ink:#1a1a1a; --muted:#6b7280; --line:#e7e7e9;
+  --accent:#2563eb; --accent-soft:#eff4ff; --chip:#f1f2f4; --radius:14px;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;line-height:1.6}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+header.site{max-width:1180px;margin:0 auto;padding:40px 24px 8px}
+header.site h1{font-size:26px;margin:0 0 4px;letter-spacing:-.01em}
+header.site p{margin:0;color:var(--muted);font-size:14px}
+
+.toolbar{position:sticky;top:0;z-index:30;background:rgba(250,250,250,.85);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.toolbar-inner{max-width:1180px;margin:0 auto;padding:14px 24px}
+.searchrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#search{flex:1;min-width:220px;padding:10px 14px;border:1px solid var(--line);
+  border-radius:10px;font-size:14px;background:var(--panel);outline:none}
+#search:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+#count{color:var(--muted);font-size:13px;white-space:nowrap}
+#reset{font-size:13px;color:var(--muted);cursor:pointer;border:none;background:none;padding:6px}
+#reset:hover{color:var(--accent)}
+
+.facets{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.facet{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.facet .flabel{font-size:12px;color:var(--muted);min-width:54px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.04em;padding-top:2px}
+.chip{font-size:12.5px;padding:4px 11px;border-radius:999px;background:var(--chip);
+  border:1px solid transparent;color:#374151;cursor:pointer;user-select:none;transition:.12s}
+.chip:hover{background:#e6e7ea}
+.chip.on{background:var(--accent);color:#fff}
+.chip .n{opacity:.6;margin-left:5px;font-variant-numeric:tabular-nums}
+.chip.on .n{opacity:.8}
+
+main{max-width:1180px;margin:0 auto;padding:24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:.15s;box-shadow:var(--shadow)}
+.card:hover{transform:translateY(-3px);border-color:#d3d6dc;box-shadow:0 6px 14px rgba(0,0,0,.06),0 18px 40px rgba(0,0,0,.08)}
+.thumb{aspect-ratio:16/9;background:#f0f1f3 center/cover no-repeat;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;color:#b8bcc4;font-size:13px}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.card-body{padding:15px 17px 17px;display:flex;flex-direction:column;gap:9px;flex:1}
+.card h3{margin:0;font-size:16px;line-height:1.35;letter-spacing:-.01em}
+.card h3 a{color:var(--ink)}
+.card h3 a:hover{color:var(--accent);text-decoration:none}
+.card .meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.badge{font-size:11.5px;padding:2px 8px;border-radius:6px;background:var(--accent-soft);
+  color:var(--accent);font-weight:600}
+.badge.year{background:#f3f4f6;color:#4b5563}
+.abstract{font-size:13.5px;color:#3f4350;display:-webkit-box;-webkit-line-clamp:4;
+  -webkit-box-orient:vertical;overflow:hidden}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:auto}
+.tag{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--chip);color:#5b616e}
+.tag:hover{background:#e2e4e8}
+.hint{font-size:11px;color:#a3a8b2;margin-top:2px}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(15,18,25,.55);z-index:100;display:none;
+  align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
+.overlay.open{display:flex}
+.modal{background:var(--panel);max-width:860px;width:100%;border-radius:16px;
+  box-shadow:0 24px 60px rgba(0,0,0,.3);position:relative;animation:pop .18s ease}
+@keyframes pop{from{transform:translateY(8px);opacity:.6}to{transform:none;opacity:1}}
+.modal-head{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);
+  padding:18px 26px;border-radius:16px 16px 0 0;z-index:2}
+.modal-head h2{margin:0 0 6px;font-size:19px;padding-right:40px}
+.modal-head .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted)}
+.modal-links a{font-size:12.5px;margin-right:12px}
+.close{position:absolute;top:14px;right:16px;border:none;background:#f1f2f4;width:32px;height:32px;
+  border-radius:8px;cursor:pointer;font-size:18px;color:#555;line-height:1}
+.close:hover{background:#e2e4e8}
+.md{padding:8px 30px 40px;font-size:15px;overflow-x:auto}
+.md h1{font-size:22px;border-bottom:1px solid var(--line);padding-bottom:.3em;margin-top:1.4em}
+.md h2{font-size:19px;margin-top:1.6em;border-bottom:1px solid var(--line);padding-bottom:.25em}
+.md h3{font-size:16px;margin-top:1.3em}
+.md img{max-width:100%;height:auto;border-radius:8px;display:block;margin:14px auto;border:1px solid var(--line)}
+.md table{border-collapse:collapse;width:100%;font-size:13px;margin:14px 0;display:block;overflow-x:auto}
+.md th,.md td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+.md th{background:#f7f8fa}
+.md blockquote{border-left:3px solid var(--accent);margin:14px 0;padding:8px 16px;
+  background:var(--accent-soft);border-radius:0 8px 8px 0;color:#333}
+.md code{background:#f1f2f4;padding:1px 5px;border-radius:4px;font-size:.9em}
+.md pre{background:#f7f8fa;padding:12px;border-radius:8px;overflow-x:auto}
+.md .katex-display{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.empty{text-align:center;color:var(--muted);padding:60px;font-size:15px}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.md{padding:8px 18px 30px}}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <h1>Robotics Paper Survey</h1>
+  <p>Click a paper title to open its page; click anywhere else on a card to read the full notes.</p>
+</header>
+
+<div class="toolbar">
+  <div class="toolbar-inner">
+    <div class="searchrow">
+      <input id="search" type="search" placeholder="Search title, authors, keywords, abstract…" autocomplete="off">
+      <span id="count"></span>
+      <button id="reset">Clear filters</button>
+    </div>
+    <div class="facets" id="facets"></div>
+  </div>
+</div>
+
+<main>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">No papers match the current filters.</div>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <button class="close" id="close" title="Close">×</button>
+      <h2 id="m-title"></h2>
+      <div class="meta" id="m-meta"></div>
+      <div class="modal-links" id="m-links" style="margin-top:8px"></div>
+    </div>
+    <div class="md" id="m-body"></div>
+  </div>
+</div>
+
+<script>
+const KATEX_DELIMS=[
+  {left:'$$',right:'$$',display:true},
+  {left:'$',right:'$',display:false},
+  {left:'\\(',right:'\\)',display:false},
+  {left:'\\[',right:'\\]',display:true}
+];
+function renderMath(el){
+  if(window.renderMathInElement)
+    try{renderMathInElement(el,{delimiters:KATEX_DELIMS,throwOnError:false})}catch(e){}
+}
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let PAPERS=[];
+const active={year:new Set(),venue:new Set(),tag:new Set()};
+const $=id=>document.getElementById(id);
+
+// cache-bust to avoid a stale (or 404) papers.json being cached by the browser/CDN
+fetch('papers.json?t=' + Date.now(), {cache: 'no-store'})
+  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(d=>{ PAPERS=d.papers||[]; buildFacets(); render(); })
+  .catch(e=>{$('grid').innerHTML='<div class="empty">Failed to load papers.json ('+e.message+').<br>For local preview run <code>python3 serve.py</code>; if just deployed, wait a moment and hard-refresh (Ctrl+Shift+R).</div>';});
+
+function counts(key,getter){
+  const m=new Map();
+  PAPERS.forEach(p=>{
+    const vals=getter(p);
+    (Array.isArray(vals)?vals:[vals]).forEach(v=>{
+      if(v!=='' && v!=null) m.set(String(v),(m.get(String(v))||0)+1);
+    });
+  });
+  return [...m.entries()];
+}
+function buildFacets(){
+  const defs=[
+    ['year','Year',p=>String(p.year),(a,b)=>b[0].localeCompare(a[0])],
+    ['venue','Venue',p=>p.venue,(a,b)=>b[1]-a[1]],
+    ['tag','Keywords',p=>p.tags,(a,b)=>b[1]-a[1]]
+  ];
+  const wrap=$('facets');wrap.innerHTML='';
+  defs.forEach(([key,label,getter,sorter])=>{
+    const row=document.createElement('div');row.className='facet';
+    row.innerHTML=`<span class="flabel">${label}</span>`;
+    counts(key,getter).sort(sorter).forEach(([val,n])=>{
+      const c=document.createElement('span');c.className='chip';
+      c.innerHTML=`${esc(val)}<span class="n">${n}</span>`;
+      c.onclick=()=>{active[key].has(val)?active[key].delete(val):active[key].add(val);
+        c.classList.toggle('on');render();};
+      row.appendChild(c);
+    });
+    wrap.appendChild(row);
+  });
+}
+function matches(p){
+  const q=$('search').value.trim().toLowerCase();
+  if(active.year.size && !active.year.has(String(p.year)))return false;
+  if(active.venue.size && !active.venue.has(p.venue))return false;
+  if(active.tag.size && !p.tags.some(t=>active.tag.has(t)))return false;
+  if(q){
+    const hay=[p.title,p.method,p.abstract,(p.authors||[]).join(' '),(p.tags||[]).join(' '),p.venue].join(' ').toLowerCase();
+    if(!hay.includes(q))return false;
+  }
+  return true;
+}
+function render(){
+  const list=PAPERS.filter(matches);
+  const grid=$('grid');grid.innerHTML='';
+  $('count').textContent=`${list.length} / ${PAPERS.length} papers`;
+  $('empty').style.display=list.length?'none':'block';
+  list.forEach(p=>{
+    const card=document.createElement('article');card.className='card';
+    const img=p.image?`<img src="${esc(p.image.src)}" alt="" loading="lazy" onerror="this.parentNode.textContent='Image unavailable'">`:'No image';
+    const titleHtml=p.url
+      ? `<a href="${esc(p.url)}" target="_blank" rel="noopener" data-link>${esc(p.title)}</a>`
+      : esc(p.title);
+    const tags=(p.tags||[]).map(t=>`<span class="tag" data-tag="${esc(t)}">${esc(t)}</span>`).join('');
+    card.innerHTML=`
+      <div class="thumb">${img}</div>
+      <div class="card-body">
+        <h3>${titleHtml}</h3>
+        <div class="meta">
+          <span class="badge year">${esc(String(p.year))}</span>
+          ${p.venue?`<span class="badge">${esc(p.venue)}</span>`:''}
+        </div>
+        <div class="abstract">${esc(p.abstract)||'<i>(no abstract)</i>'}</div>
+        <div class="tags">${tags}</div>
+        <div class="hint">Title → paper page · Card → full notes</div>
+      </div>`;
+    card.addEventListener('click',e=>{
+      if(e.target.closest('[data-link]'))return;            // let the title link navigate normally
+      const tg=e.target.closest('[data-tag]');
+      if(tg){const v=tg.dataset.tag; if(!active.tag.has(v)){active.tag.add(v);buildFacets();
+        document.querySelectorAll('.facet .chip').forEach(c=>{if(c.textContent.startsWith(v))c.classList.add('on')});}
+        render();return;}
+      openModal(p);
+    });
+    grid.appendChild(card);
+  });
+  renderMath(grid);   // render math in card titles (e.g. $\pi_{0.5}$)
+}
+
+function openModal(p){
+  $('m-title').innerHTML=esc(p.title);
+  const meta=[`<span class="badge year">${esc(String(p.year))}</span>`];
+  if(p.venue)meta.push(`<span class="badge">${esc(p.venue)}</span>`);
+  if(p.authors&&p.authors.length)meta.push(`<span>${esc(p.authors.slice(0,6).join(', '))}${p.authors.length>6?' et al.':''}</span>`);
+  $('m-meta').innerHTML=meta.join(' ');
+  const L=p.links||{};const order=[['project','Project'],['arxiv','arXiv'],['paper','Paper'],['code','Code'],['arxiv_html','arXiv HTML']];
+  $('m-links').innerHTML=order.filter(([k])=>L[k]).map(([k,lab])=>`<a href="${esc(L[k])}" target="_blank" rel="noopener">${lab} ↗</a>`).join('');
+  const body=$('m-body');
+  if(window.marked){
+    marked.setOptions({gfm:true,breaks:false});
+    body.innerHTML=marked.parse(p.body||'');
+    renderMath(body);
+  }else{
+    // If the marked CDN failed to load, fall back to plain text so content is still readable
+    body.innerHTML='<pre style="white-space:pre-wrap">'+esc(p.body||'')+'</pre>';
+  }
+  $('m-title').parentNode.parentNode.querySelector('.md').scrollTop=0;
+  $('overlay').classList.add('open');document.body.style.overflow='hidden';
+  renderMath($('m-title'));
+}
+function closeModal(){$('overlay').classList.remove('open');document.body.style.overflow=''}
+$('close').onclick=closeModal;
+$('overlay').addEventListener('click',e=>{if(e.target===$('overlay'))closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+$('search').addEventListener('input',render);
+$('reset').onclick=()=>{active.year.clear();active.venue.clear();active.tag.clear();
+  $('search').value='';document.querySelectorAll('.chip.on').forEach(c=>c.classList.remove('on'));render()};
+</script>
+</body>
+</html>
