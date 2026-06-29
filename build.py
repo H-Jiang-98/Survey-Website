@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-build.py — 论文综述网站静态生成器
+build.py — System0 Survey 论文网站静态生成器
 
 扫描当前目录下的 Obsidian markdown 笔记，提取元数据 / 缩略图 / 摘要 / 全文，
 生成 site/papers.json 并把本地图片拷贝到 site/assets/。
@@ -14,13 +14,15 @@ build.py — 论文综述网站静态生成器
 
 import json
 import re
+import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-MD_DIR = ROOT / "markdown_files"   # 所有论文 markdown 笔记
+ASSETS_SRC = ROOT / "assets"
 SITE = ROOT / "site"
+SITE_ASSETS = SITE / "assets"
 
-# 万一 Obsidian 又生成了目录页 (MOC)，按名跳过，不当作论文。
+# 这些是自动生成的目录页 (MOC)，不是论文笔记，跳过。
 SKIP_NAMES = {"_inbox.md", "assets.md"}
 
 
@@ -182,7 +184,9 @@ def parse_paper(path):
         return None  # 不是论文笔记
 
     abstract = get_section(body, "一句话结论") or get_section(body, "一句话总结")
-    abstract = clean_wikilinks(abstract).strip()
+    abstract = clean_wikilinks(abstract)
+    abstract = re.sub(r"(?m)^\s*>\s?", "", abstract)  # 去 blockquote 引用符
+    abstract = re.sub(r"\n+-{3,}\s*$", "", abstract).strip()  # 去尾部 --- 分隔线
 
     img = first_image(body)
     links = extract_links(body, fm, img)
@@ -227,9 +231,13 @@ def validate_frontend_js():
 
 def main():
     SITE.mkdir(exist_ok=True)
+    if SITE_ASSETS.exists():
+        shutil.rmtree(SITE_ASSETS)  # 清掉上次构建的残留图片，避免陈旧文件
+    SITE_ASSETS.mkdir(exist_ok=True)
+
     papers = []
     skipped = []  # 图片不合规、被剔除的论文
-    for path in sorted(MD_DIR.glob("*.md")):
+    for path in sorted(ROOT.glob("*.md")):
         if path.name in SKIP_NAMES:
             continue
         paper = parse_paper(path)
@@ -240,6 +248,18 @@ def main():
             skipped.append((path.name, paper["method"], violations))
             continue  # 策略：图片必须全部为在线图，否则整篇剔除
         papers.append(paper)
+
+    # 仅拷贝被纳入论文实际引用的本地图（当前策略下通常为空）
+    copied = 0
+    if ASSETS_SRC.is_dir():
+        referenced = set()
+        for p in papers:
+            if p["image"] and p["image"]["local"]:
+                referenced.add(Path(p["image"]["src"]).name)
+        for png in ASSETS_SRC.glob("*"):
+            if png.name in referenced:
+                shutil.copy2(png, SITE_ASSETS / png.name)
+                copied += 1
 
     # 警告：列出被剔除的不合规论文
     if skipped:
@@ -267,6 +287,7 @@ def main():
     validate_frontend_js()
 
     print(f"✓ {len(papers)} 篇论文 -> site/papers.json（剔除 {len(skipped)} 篇）")
+    print(f"✓ {copied} 张本地图片 -> site/assets/")
     print(f"  年份: {', '.join(years)}")
     print(f"  发表地: {', '.join(venues)}")
 
@@ -293,7 +314,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if args and args[0] == "--check":
         # 校验模式：只检查图片合规，不构建。供 CI 在 PR 上做门禁。
-        targets = args[1:] or [str(p) for p in sorted(MD_DIR.glob("*.md"))]
+        targets = args[1:] or [str(p) for p in sorted(ROOT.glob("*.md"))]
         bad = lint_paths(targets)
         if bad:
             print("✗ 图片合规校验未通过：以下论文含本地图片，必须改为在线 URL ![](https://…)：")
