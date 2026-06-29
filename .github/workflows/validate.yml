@@ -31,6 +31,25 @@ jobs:
           echo "Changed markdown: ${FILES:-<none>}"
           echo "files=$FILES" >> "$GITHUB_OUTPUT"
 
+      - name: Ensure new markdown notes live under markdown_files/
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          ADDED=$(git diff --name-only --diff-filter=A "$BASE_SHA" HEAD -- '*.md')
+          BAD=""
+          for f in $ADDED; do
+            case "$f" in
+              markdown_files/*) ;;                  # 正确位置，build.py 会收录
+              README.md|CONTRIBUTING.md) ;;         # 允许的根目录文档
+              *) BAD="$BAD $f" ;;
+            esac
+          done
+          if [ -n "$BAD" ]; then
+            echo "✗ 以下新增 markdown 未放在 markdown_files/ 目录下：$BAD"
+            echo "  论文笔记必须放入 markdown_files/，否则不会被 build.py 收录。"
+            exit 1
+          fi
+          echo "✓ 新增 markdown 均位于 markdown_files/（或允许的根目录文档）。"
+
       - name: Enforce online-image policy on changed notes
         run: |
           if [ -z "${{ steps.diff.outputs.files }}" ]; then

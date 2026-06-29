@@ -2,7 +2,7 @@
 """
 build.py — System0 Survey 论文网站静态生成器
 
-扫描当前目录下的 Obsidian markdown 笔记，提取元数据 / 缩略图 / 摘要 / 全文，
+扫描 markdown_files/ 目录下的 Obsidian markdown 笔记，提取元数据 / 缩略图 / 摘要 / 全文，
 生成 site/papers.json 并把本地图片拷贝到 site/assets/。
 前端 site/index.html 读取 papers.json 渲染卡片、筛选与全文弹窗。
 
@@ -18,6 +18,7 @@ import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+MD_DIR = ROOT / "markdown_files"  # 论文笔记目录（笔记已统一移入此处）
 ASSETS_SRC = ROOT / "assets"
 SITE = ROOT / "site"
 SITE_ASSETS = SITE / "assets"
@@ -237,7 +238,7 @@ def main():
 
     papers = []
     skipped = []  # 图片不合规、被剔除的论文
-    for path in sorted(ROOT.glob("*.md")):
+    for path in sorted(MD_DIR.glob("*.md")):
         if path.name in SKIP_NAMES:
             continue
         paper = parse_paper(path)
@@ -314,7 +315,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if args and args[0] == "--check":
         # 校验模式：只检查图片合规，不构建。供 CI 在 PR 上做门禁。
-        targets = args[1:] or [str(p) for p in sorted(ROOT.glob("*.md"))]
+        targets = args[1:] or [str(p) for p in sorted(MD_DIR.glob("*.md"))]
         bad = lint_paths(targets)
         if bad:
             print("✗ 图片合规校验未通过：以下论文含本地图片，必须改为在线 URL ![](https://…)：")
