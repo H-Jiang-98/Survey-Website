@@ -52,6 +52,10 @@ header.site p{margin:0;color:var(--muted);font-size:14px}
 .chip.on{background:var(--accent);color:#fff}
 .chip .n{opacity:.6;margin-left:5px;font-variant-numeric:tabular-nums}
 .chip.on .n{opacity:.8}
+.chip.more{background:transparent;border:1px dashed #cbd0d8;color:var(--muted)}
+.chip.more:hover{background:var(--chip);border-color:#b8bdc6}
+.facet-more{display:none}
+.facet-more.open{display:contents}
 
 main{max-width:1180px;margin:0 auto;padding:24px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px}
@@ -158,6 +162,9 @@ function renderMath(el){
 }
 const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+// ── Tweakable: how many Keywords chips to show before collapsing the rest into "+N more".
+const KEYWORDS_TOP_N=10;
+
 let PAPERS=[];
 let intersect=false;   // false = union (default), true = linked/intersection faceting
 const active={year:new Set(),venue:new Set(),tag:new Set()};
@@ -207,20 +214,50 @@ function buildFacets(){
     active[key].forEach(v=>{if(!m.has(v))m.set(v,0);});
     const row=document.createElement('div');row.className='facet';
     row.innerHTML=`<span class="flabel">${label}</span>`;
-    [...m.entries()].sort(sorter).forEach(([val,n])=>{
+    const mkChip=([val,n])=>{
       const c=document.createElement('span');c.className='chip'+(active[key].has(val)?' on':'');
       c.innerHTML=`${esc(val)}<span class="n">${n}</span>`;
       c.onclick=()=>{active[key].has(val)?active[key].delete(val):active[key].add(val);
         onFilterChanged();};
-      row.appendChild(c);
-    });
+      return c;
+    };
+    const all=[...m.entries()].sort(sorter);
+    // Keywords: show Top-N (recomputed from the current pool, so it updates live in
+    // linked mode); collapse the long tail into a "more" toggle. Pin selected tags that
+    // fell out of Top-N so they stay un-selectable from view.
+    const TOP_N=KEYWORDS_TOP_N;
+    let visible=all, overflow=[];
+    if(key==='tag' && all.length>TOP_N+1){
+      visible=all.slice(0,TOP_N);
+      overflow=all.slice(TOP_N);
+      const pinned=overflow.filter(([v])=>active.tag.has(v));
+      if(pinned.length){visible=visible.concat(pinned);overflow=overflow.filter(([v])=>!active.tag.has(v));}
+    }
+    visible.forEach(e=>row.appendChild(mkChip(e)));
+    if(overflow.length){
+      const box=document.createElement('span');box.className='facet-more';
+      overflow.forEach(e=>box.appendChild(mkChip(e)));
+      const toggle=document.createElement('span');toggle.className='chip more';
+      const collapsed=`+${overflow.length} more`;
+      toggle.textContent=collapsed;
+      toggle.onclick=()=>{const open=box.classList.toggle('open');
+        toggle.textContent=open?'show less':collapsed;};
+      row.appendChild(toggle);row.appendChild(box);
+    }
     wrap.appendChild(row);
   });
 }
 // rebuild facets (options narrow in intersection mode) then re-render the grid
 function onFilterChanged(){buildFacets();render();}
 function matches(p){
-  return passYear(p)&&passVenue(p)&&passTag(p)&&passSearch(p);
+  if(!passSearch(p))return false;            // search box is an independent text filter (always AND)
+  const anySel=active.year.size||active.venue.size||active.tag.size;
+  if(!anySel)return true;                     // no facet selected -> everything passes
+  if(intersect)return passYear(p)&&passVenue(p)&&passTag(p);  // linked: AND across facets
+  // union (default): pass if the paper matches a selected chip in ANY facet
+  return (active.year.size  && active.year.has(String(p.year)))
+       ||(active.venue.size && active.venue.has(p.venue))
+       ||(active.tag.size   && (p.tags||[]).some(t=>active.tag.has(t)));
 }
 function render(){
   const list=PAPERS.filter(matches);
