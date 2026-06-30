@@ -105,6 +105,19 @@ def first_image(body):
     return cands[0][1]
 
 
+def strip_venue_year(venue):
+    """从 venue 字符串中去掉独立的 4 位年份（19xx/20xx），年份已单独存于 year 字段。
+
+    例: 'CoRL 2025 / PMLR' -> 'CoRL / PMLR'；'NeurIPS 2025' -> 'NeurIPS'；
+        'SIGGRAPH 2024' -> 'SIGGRAPH'；'arXiv' / 'SIGGRAPH Asia (ACM TOG)' 保持不变。
+    """
+    s = re.sub(r"\b(?:19|20)\d{2}\b", "", venue)
+    s = re.sub(r"\(\s*\)", "", s)        # 去掉清空后残留的空括号
+    s = re.sub(r"\s{2,}", " ", s)        # 合并多余空格
+    s = s.strip(" /-–—·,，")              # 去掉首尾悬空的分隔符
+    return s.strip()
+
+
 def derive_arxiv_abs(text):
     """从任意 arxiv.org/{html,abs,pdf}/<id> 链接推出规范 abs 链接。"""
     m = re.search(r"arxiv\.org/(?:html|abs|pdf)/(\d{4}\.\d{4,5})", text)
@@ -206,7 +219,7 @@ def parse_paper(path):
         "method": str(fm.get("method_name", path.stem)),
         "authors": fm.get("authors", []) or [],
         "year": fm.get("year", ""),
-        "venue": str(fm.get("venue", "")),
+        "venue": strip_venue_year(str(fm.get("venue", ""))),
         "tags": fm.get("tags", []) or [],
         "image": img,
         "abstract": abstract,

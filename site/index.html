@@ -38,6 +38,9 @@ header.site p{margin:0;color:var(--muted);font-size:14px}
 #count{color:var(--muted);font-size:13px;white-space:nowrap}
 #reset{font-size:13px;color:var(--muted);cursor:pointer;border:none;background:none;padding:6px}
 #reset:hover{color:var(--accent)}
+#modetoggle{font-size:13px;color:var(--muted);cursor:pointer;user-select:none;display:flex;
+  align-items:center;gap:5px;white-space:nowrap}
+#modetoggle input{cursor:pointer;margin:0}
 
 .facets{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .facet{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
@@ -118,6 +121,7 @@ main{max-width:1180px;margin:0 auto;padding:24px}
     <div class="searchrow">
       <input id="search" type="search" placeholder="Search title, authors, keywords, abstract…" autocomplete="off">
       <span id="count"></span>
+      <label id="modetoggle" title="Linked filters: chips below narrow to only options present in the current selection (intersection)"><input type="checkbox" id="intersect"> Linked filters</label>
       <button id="reset">Clear filters</button>
     </div>
     <div class="facets" id="facets"></div>
@@ -155,8 +159,20 @@ function renderMath(el){
 const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 let PAPERS=[];
+let intersect=false;   // false = union (default), true = linked/intersection faceting
 const active={year:new Set(),venue:new Set(),tag:new Set()};
 const $=id=>document.getElementById(id);
+
+// per-facet predicates (a facet with no active selection passes everything)
+const passYear =p=>!active.year.size  || active.year.has(String(p.year));
+const passVenue=p=>!active.venue.size || active.venue.has(p.venue);
+const passTag  =p=>!active.tag.size   || (p.tags||[]).some(t=>active.tag.has(t));
+function passSearch(p){
+  const q=$('search').value.trim().toLowerCase();
+  if(!q)return true;
+  const hay=[p.title,p.method,p.abstract,(p.authors||[]).join(' '),(p.tags||[]).join(' '),p.venue].join(' ').toLowerCase();
+  return hay.includes(q);
+}
 
 // cache-bust to avoid a stale (or 404) papers.json being cached by the browser/CDN
 fetch('papers.json?t=' + Date.now(), {cache: 'no-store'})
@@ -164,46 +180,47 @@ fetch('papers.json?t=' + Date.now(), {cache: 'no-store'})
   .then(d=>{ PAPERS=d.papers||[]; buildFacets(); render(); })
   .catch(e=>{$('grid').innerHTML='<div class="empty">Failed to load papers.json ('+e.message+').<br>For local preview run <code>python3 serve.py</code>; if just deployed, wait a moment and hard-refresh (Ctrl+Shift+R).</div>';});
 
-function counts(key,getter){
+function counts(pool,getter){
   const m=new Map();
-  PAPERS.forEach(p=>{
+  pool.forEach(p=>{
     const vals=getter(p);
     (Array.isArray(vals)?vals:[vals]).forEach(v=>{
       if(v!=='' && v!=null) m.set(String(v),(m.get(String(v))||0)+1);
     });
   });
-  return [...m.entries()];
+  return m;
 }
 function buildFacets(){
+  // In intersection mode a facet's available options are computed from papers that pass
+  // every OTHER facet (plus search), so picking 2026 narrows venues/keywords to only
+  // those present in 2026 papers. In union mode the pool is always all papers.
   const defs=[
-    ['year','Year',p=>String(p.year),(a,b)=>b[0].localeCompare(a[0])],
-    ['venue','Venue',p=>p.venue,(a,b)=>b[1]-a[1]],
-    ['tag','Keywords',p=>p.tags,(a,b)=>b[1]-a[1]]
+    ['year','Year',p=>String(p.year),p=>passVenue(p)&&passTag(p)&&passSearch(p),(a,b)=>b[0].localeCompare(a[0])],
+    ['venue','Venue',p=>p.venue,p=>passYear(p)&&passTag(p)&&passSearch(p),(a,b)=>b[1]-a[1]],
+    ['tag','Keywords',p=>p.tags,p=>passYear(p)&&passVenue(p)&&passSearch(p),(a,b)=>b[1]-a[1]]
   ];
   const wrap=$('facets');wrap.innerHTML='';
-  defs.forEach(([key,label,getter,sorter])=>{
+  defs.forEach(([key,label,getter,others,sorter])=>{
+    const pool=intersect?PAPERS.filter(others):PAPERS;
+    const m=counts(pool,getter);
+    // keep any currently-selected value visible (count 0) so it can still be unselected
+    active[key].forEach(v=>{if(!m.has(v))m.set(v,0);});
     const row=document.createElement('div');row.className='facet';
     row.innerHTML=`<span class="flabel">${label}</span>`;
-    counts(key,getter).sort(sorter).forEach(([val,n])=>{
-      const c=document.createElement('span');c.className='chip';
+    [...m.entries()].sort(sorter).forEach(([val,n])=>{
+      const c=document.createElement('span');c.className='chip'+(active[key].has(val)?' on':'');
       c.innerHTML=`${esc(val)}<span class="n">${n}</span>`;
       c.onclick=()=>{active[key].has(val)?active[key].delete(val):active[key].add(val);
-        c.classList.toggle('on');render();};
+        onFilterChanged();};
       row.appendChild(c);
     });
     wrap.appendChild(row);
   });
 }
+// rebuild facets (options narrow in intersection mode) then re-render the grid
+function onFilterChanged(){buildFacets();render();}
 function matches(p){
-  const q=$('search').value.trim().toLowerCase();
-  if(active.year.size && !active.year.has(String(p.year)))return false;
-  if(active.venue.size && !active.venue.has(p.venue))return false;
-  if(active.tag.size && !p.tags.some(t=>active.tag.has(t)))return false;
-  if(q){
-    const hay=[p.title,p.method,p.abstract,(p.authors||[]).join(' '),(p.tags||[]).join(' '),p.venue].join(' ').toLowerCase();
-    if(!hay.includes(q))return false;
-  }
-  return true;
+  return passYear(p)&&passVenue(p)&&passTag(p)&&passSearch(p);
 }
 function render(){
   const list=PAPERS.filter(matches);
@@ -232,9 +249,8 @@ function render(){
     card.addEventListener('click',e=>{
       if(e.target.closest('[data-link]'))return;            // let the title link navigate normally
       const tg=e.target.closest('[data-tag]');
-      if(tg){const v=tg.dataset.tag; if(!active.tag.has(v)){active.tag.add(v);buildFacets();
-        document.querySelectorAll('.facet .chip').forEach(c=>{if(c.textContent.startsWith(v))c.classList.add('on')});}
-        render();return;}
+      if(tg){const v=tg.dataset.tag; if(!active.tag.has(v))active.tag.add(v);
+        onFilterChanged();return;}
       openModal(p);
     });
     grid.appendChild(card);
@@ -267,9 +283,10 @@ function closeModal(){$('overlay').classList.remove('open');document.body.style.
 $('close').onclick=closeModal;
 $('overlay').addEventListener('click',e=>{if(e.target===$('overlay'))closeModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
-$('search').addEventListener('input',render);
+$('search').addEventListener('input',onFilterChanged);
+$('intersect').addEventListener('change',()=>{intersect=$('intersect').checked;onFilterChanged();});
 $('reset').onclick=()=>{active.year.clear();active.venue.clear();active.tag.clear();
-  $('search').value='';document.querySelectorAll('.chip.on').forEach(c=>c.classList.remove('on'));render()};
+  $('search').value='';onFilterChanged();};
 </script>
 </body>
 </html>
