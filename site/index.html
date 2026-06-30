@@ -173,7 +173,7 @@ const $=id=>document.getElementById(id);
 // per-facet predicates (a facet with no active selection passes everything)
 const passYear =p=>!active.year.size  || active.year.has(String(p.year));
 const passVenue=p=>!active.venue.size || active.venue.has(p.venue);
-const passTag  =p=>!active.tag.size   || (p.tags||[]).some(t=>active.tag.has(t));
+const passTag  =p=>!active.tag.size   || [...active.tag].every(t=>(p.tags||[]).includes(t)); // AND: paper must have EVERY selected keyword
 function passSearch(p){
   const q=$('search').value.trim().toLowerCase();
   if(!q)return true;
@@ -204,7 +204,7 @@ function buildFacets(){
   const defs=[
     ['year','Year',p=>String(p.year),p=>passVenue(p)&&passTag(p)&&passSearch(p),(a,b)=>b[0].localeCompare(a[0])],
     ['venue','Venue',p=>p.venue,p=>passYear(p)&&passTag(p)&&passSearch(p),(a,b)=>b[1]-a[1]],
-    ['tag','Keywords',p=>p.tags,p=>passYear(p)&&passVenue(p)&&passSearch(p),(a,b)=>b[1]-a[1]]
+    ['tag','Keywords',p=>p.tags,p=>passYear(p)&&passVenue(p)&&passTag(p)&&passSearch(p),(a,b)=>b[1]-a[1]]
   ];
   const wrap=$('facets');wrap.innerHTML='';
   defs.forEach(([key,label,getter,others,sorter])=>{
