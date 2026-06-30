@@ -130,8 +130,15 @@ def extract_links(body, fm, img):
         um = re.search(r"https?://\S+", cell)
         if um:
             links.setdefault("project", um.group(0))
-    # 任意 markdown 链接形式 [arXiv](url) / [代码](url) / [GitHub](url)
-    mdlink = {"arxiv": r"arxiv", "code": r"代码|github|code"}
+    # 任意 markdown 链接形式 [arXiv](url) / [代码](url) / [GitHub](url) / [ACM DL](url)
+    # paper 一类覆盖『简版元信息表格』里常见的发表方链接（ACM DL / PMLR / OpenReview / PDF 等），
+    # 它们在前端的链接顺序里占 'paper' 槽位，也是 PLT 这类仅有 ACM DL 链接论文的唯一入口。
+    mdlink = {
+        "arxiv": r"arxiv",
+        "code": r"代码|github|code",
+        "project": r"项目主页|项目页|项目|主页|project|page",
+        "paper": r"acm\s*dl|acm|论文|paper|pdf|pmlr|openreview|proceedings",
+    }
     for key, pat in mdlink.items():
         m = re.search(r"\[(?:" + pat + r")\]\((https?://[^)]+)\)", body, re.IGNORECASE)
         if m:
