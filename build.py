@@ -258,11 +258,13 @@ def main():
 
     papers = []
     skipped = []  # 图片不合规、被剔除的论文
+    ignored = []  # 缺少必填 frontmatter.title、无法识别的笔记
     for path in sorted(MD_DIR.glob("*.md")):
         if path.name in SKIP_NAMES:
             continue
         paper = parse_paper(path)
         if not paper:
+            ignored.append(path.name)
             continue
         violations = paper.pop("_violations", [])
         if violations:
@@ -281,6 +283,13 @@ def main():
             if png.name in referenced:
                 shutil.copy2(png, SITE_ASSETS / png.name)
                 copied += 1
+
+    # 警告：列出因缺少必填元数据而未被识别的笔记
+    if ignored:
+        print(f"\n⚠ 已忽略 {len(ignored)} 篇缺少 frontmatter.title 的 Markdown 笔记：")
+        for name in ignored:
+            print(f"   ✗ {name}")
+        print("   请在文件开头添加 YAML frontmatter；格式参见 CONTRIBUTING.md。\n")
 
     # 警告：列出被剔除的不合规论文
     if skipped:
