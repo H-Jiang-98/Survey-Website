@@ -4,6 +4,37 @@
 
 > 想添加一篇论文？请看 **[CONTRIBUTING.md](CONTRIBUTING.md)**（含完整提交流程与图片策略）。
 
+### 新增论文格式速览
+
+在 `markdown_files/` 中新增一个 `.md` 文件，最小推荐格式如下：
+
+```markdown
+---
+title: "Your Paper Title"
+method_name: "YourMethod"
+authors: [First Author, Second Author]
+year: 2026
+venue: arXiv
+tags: [humanoid, vision-language-action]
+image_source: online
+---
+
+## 一句话结论
+
+> 用一两句话概括论文，作为网站卡片摘要。
+
+## 关键图表
+
+![Figure description](https://example.com/figure.png)
+
+论文：[arXiv](https://arxiv.org/abs/xxxx.xxxxx)
+```
+
+- `title` 必填，缺失时整篇笔记不会被网站识别；`year`、`venue`、`tags` 用于卡片徽章和筛选。
+- 卡片摘要读取 `## 一句话结论` 或 `## 一句话总结`；正文第一张图片会成为卡片封面。
+- **所有图片必须使用在线 URL**。Obsidian 本地嵌入和仓库相对路径图片会导致整篇论文被剔除，并使 PR 校验失败。
+- 论文链接可放在速查卡片、元信息表或正文中。完整说明、自检和提交流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
 ## 使用
 
 ```bash
